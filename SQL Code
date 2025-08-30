@@ -1,0 +1,1323 @@
+create database cricbuzz; 
+use cricbuzz;
+-- Drop old tables to avoid conflicts
+
+
+-- Teams
+CREATE TABLE Teams (
+    team_id INT AUTO_INCREMENT PRIMARY KEY,
+    team_name VARCHAR(50) NOT NULL
+);
+
+-- Venues
+CREATE TABLE Venues (
+    venue_id INT AUTO_INCREMENT PRIMARY KEY,
+    venue_name VARCHAR(100),
+    city VARCHAR(50),
+    country VARCHAR(50)
+);
+
+-- Players
+CREATE TABLE Players (
+    player_id INT AUTO_INCREMENT PRIMARY KEY,
+    player_name VARCHAR(100),
+    role VARCHAR(50),
+    team_id INT,
+    FOREIGN KEY (team_id) REFERENCES Teams(team_id)
+);
+
+-- Matches
+CREATE TABLE Matches (
+    match_id INT AUTO_INCREMENT PRIMARY KEY,
+    team1_id INT,
+    team2_id INT,
+    venue_id INT,
+    match_date DATE,
+    FOREIGN KEY (team1_id) REFERENCES Teams(team_id),
+    FOREIGN KEY (team2_id) REFERENCES Teams(team_id),
+    FOREIGN KEY (venue_id) REFERENCES Venues(venue_id)
+);
+
+-- MatchStats
+CREATE TABLE MatchStats (
+    stat_id INT AUTO_INCREMENT PRIMARY KEY,
+    match_id INT,
+    player_id INT,
+    runs INT,
+    wickets INT,
+    FOREIGN KEY (match_id) REFERENCES Matches(match_id),
+    FOREIGN KEY (player_id) REFERENCES Players(player_id)
+);
+
+-- Insert Teams
+INSERT INTO Teams (team_name) VALUES
+('India'), ('Australia'), ('England'), ('Pakistan'), ('South Africa');
+
+-- Insert Venues
+INSERT INTO Venues (venue_name, city, country) VALUES
+('Wankhede Stadium', 'Mumbai', 'India'),
+('MCG', 'Melbourne', 'Australia'),
+('Lords', 'London', 'England'),
+('Gaddafi Stadium', 'Lahore', 'Pakistan'),
+('Newlands', 'Cape Town', 'South Africa');
+
+-- Insert Players
+INSERT INTO Players (player_name, role, team_id) VALUES
+('Virat Kohli', 'Batsman', 1),
+('Rohit Sharma', 'Batsman', 1),
+('Jasprit Bumrah', 'Bowler', 1),
+('Steve Smith', 'Batsman', 2),
+('Pat Cummins', 'Bowler', 2),
+('Joe Root', 'Batsman', 3),
+('Ben Stokes', 'All-rounder', 3),
+('Babar Azam', 'Batsman', 4),
+('Shaheen Afridi', 'Bowler', 4),
+('Quinton de Kock', 'Wicket-keeper', 5),
+('Kagiso Rabada', 'Bowler', 5);
+
+-- Insert Matches
+INSERT INTO Matches (team1_id, team2_id, venue_id, match_date) VALUES
+(1, 2, 1, '2024-01-10'),
+(3, 4, 3, '2024-02-05'),
+(5, 1, 5, '2024-03-12'),
+(2, 3, 2, '2024-04-20'),
+(4, 5, 4, '2024-05-18');
+
+-- Insert MatchStats
+INSERT INTO MatchStats (match_id, player_id, runs, wickets) VALUES
+(1, 1, 85, 0),
+(1, 2, 45, 0),
+(1, 3, 5, 2),
+(1, 4, 72, 0),
+(1, 5, 12, 3),
+
+(2, 6, 110, 0),
+(2, 7, 40, 1),
+(2, 8, 90, 0),
+(2, 9, 15, 2),
+
+(3, 10, 65, 0),
+(3, 11, 20, 2),
+(3, 1, 120, 0),
+(3, 3, 8, 4),
+
+(4, 4, 130, 0),
+(4, 5, 25, 2),
+(4, 6, 55, 0),
+(4, 7, 75, 1),
+
+(5, 8, 105, 0),
+(5, 9, 18, 3),
+(5, 10, 88, 0),
+(5, 11, 10, 4);
+
+SELECT * 
+FROM Venues
+WHERE country = 'India';
+
+SELECT m.match_id,
+       t1.team_name AS team1,
+       t2.team_name AS team2,
+       CONCAT(v.venue_name, ', ', v.city) AS venue,
+       m.match_date
+FROM Matches m
+JOIN Teams t1 ON m.team1_id = t1.team_id
+JOIN Teams t2 ON m.team2_id = t2.team_id
+JOIN Venues v ON m.venue_id = v.venue_id
+WHERE m.match_date >= (CURDATE() - INTERVAL 30 DAY)
+ORDER BY m.match_date DESC;
+
+SELECT p.player_name,
+       SUM(ms.runs) AS total_runs,
+       ROUND(AVG(NULLIF(ms.runs, 0)), 2) AS batting_average,
+       SUM(CASE WHEN ms.runs >= 100 THEN 1 ELSE 0 END) AS hundreds
+FROM MatchStats ms
+JOIN Players p ON p.player_id = ms.player_id
+GROUP BY p.player_id, p.player_name
+ORDER BY total_runs DESC
+LIMIT 10;
+
+ALTER TABLE venues
+ADD COLUMN capacity INT;
+
+INSERT INTO venues (venue_name, city, country, capacity) VALUES
+('Eden Gardens', 'Kolkata', 'India', 68000),
+('Melbourne Cricket Ground', 'Melbourne', 'Australia', 100024),
+('Narendra Modi Stadium', 'Ahmedabad', 'India', 132000),
+('Wankhede Stadium', 'Mumbai', 'India', 33000),
+('Lord''s Cricket Ground', 'London', 'England', 30000),
+('Feroz Shah Kotla', 'Delhi', 'India', 41820),
+('Perth Stadium', 'Perth', 'Australia', 61000),
+('Sydney Cricket Ground', 'Sydney', 'Australia', 48601),
+('Old Trafford', 'Manchester', 'England', 74000),
+('Dubai International Stadium', 'Dubai', 'UAE', 25000);
+
+-- Q4: Venues with capacity > 50,000, ordered by largest
+SELECT 
+    venue_name, 
+    city, 
+    country, 
+    capacity
+FROM venues
+WHERE capacity > 50000
+ORDER BY capacity DESC;
+
+ALTER TABLE matches
+ADD COLUMN winner_id INT;
+SELECT winner_id AS team_id, COUNT(*) AS total_wins
+FROM matches
+WHERE winner_id IS NOT NULL
+GROUP BY winner_id
+ORDER BY total_wins DESC;
+SELECT role, COUNT(*) AS total_players
+FROM players
+GROUP BY role
+ORDER BY total_players DESC;
+
+
+SELECT t.team_name, COUNT(m.match_id) AS total_wins
+FROM matches m
+JOIN teams t ON m.winner_id = t.team_id
+GROUP BY t.team_name
+ORDER BY total_wins DESC;
+
+
+SELECT 
+    series_name,
+    host_country,
+    match_type,
+    start_date,
+    total_matches
+FROM series
+WHERE YEAR(start_date) = 2024;
+
+CREATE TABLE series (
+    series_id INT AUTO_INCREMENT PRIMARY KEY,
+    series_name VARCHAR(255),
+    host_country VARCHAR(100),
+    match_type VARCHAR(50),
+    start_date DATE,
+    total_matches INT
+);
+INSERT INTO series (series_name, host_country, match_type, start_date, total_matches)
+VALUES
+('ICC Men''s T20 World Cup 2024', 'West Indies & USA', 'T20I', '2024-06-01', 55),
+('India vs England Test Series 2024', 'India', 'Test', '2024-01-25', 5),
+('Australia vs Pakistan ODI Series 2024', 'Australia', 'ODI', '2024-02-10', 3),
+('IPL 2024', 'India', 'T20', '2024-03-23', 74),
+('Ashes 2024', 'England', 'Test', '2024-07-01', 5),
+('Champions Trophy 2024', 'Pakistan', 'ODI', '2024-09-20', 15),
+('South Africa vs New Zealand Test Series 2024', 'South Africa', 'Test', '2024-12-01', 2);
+
+SELECT series_name, host_country, match_type, start_date, total_matches
+FROM series
+WHERE YEAR(start_date) = 2024;
+
+
+SELECT  
+    p.player_name,
+    SUM(ms.runs) AS total_runs,
+    SUM(ms.wickets) AS total_wickets
+FROM players p
+JOIN matchstats ms ON p.player_id = ms.player_id
+WHERE p.role = 'All-Rounder'
+GROUP BY p.player_id
+HAVING total_runs > 1000 AND total_wickets > 50;
+
+ALTER TABLE matches
+ADD COLUMN victory_margin INT,
+ADD COLUMN victory_type VARCHAR(50);
+-- Add match description column
+ALTER TABLE Matches
+ADD COLUMN match_desc VARCHAR(255);
+
+-- Add status column to indicate if match is completed
+ALTER TABLE Matches
+ADD COLUMN status VARCHAR(50);
+-- Create match descriptions
+SET SQL_SAFE_UPDATES = 0;
+UPDATE Matches m
+JOIN Teams t1 ON m.team1_id = t1.team_id
+JOIN Teams t2 ON m.team2_id = t2.team_id
+SET m.match_desc = CONCAT(t1.team_name, ' vs ', t2.team_name);
+
+-- Mark all matches as 'Completed' for testing
+UPDATE Matches
+SET status = 'Completed';
+-- Fill some realistic victory_margin and victory_type for demo
+UPDATE Matches
+SET victory_margin = FLOOR(1 + RAND() * 100),
+    victory_type = CASE WHEN RAND() > 0.5 THEN 'Runs' ELSE 'Wickets' END;
+
+-- Create match descriptions
+UPDATE Matches m
+JOIN Teams t1 ON m.team1_id = t1.team_id
+JOIN Teams t2 ON m.team2_id = t2.team_id
+SET m.match_desc = CONCAT(t1.team_name, ' vs ', t2.team_name);
+
+-- Mark all matches as 'Completed' for testing
+UPDATE Matches
+SET status = 'Completed';
+
+-- Fill some realistic victory_margin and victory_type for demo
+UPDATE Matches
+SET victory_margin = FLOOR(1 + RAND() * 100),
+    victory_type = CASE WHEN RAND() > 0.5 THEN 'Runs' ELSE 'Wickets' END;
+SELECT match_id, match_desc FROM Matches;
+ALTER TABLE Matches
+ADD COLUMN match_desc VARCHAR(100);
+UPDATE Matches m
+JOIN Teams t1 ON m.team1_id = t1.team_id
+JOIN Teams t2 ON m.team2_id = t2.team_id
+SET m.match_desc = CONCAT(t1.team_name, ' vs ', t2.team_name);
+SELECT match_id, match_desc FROM Matches;
+
+ALTER TABLE Matches
+ADD COLUMN match_format VARCHAR(10);
+UPDATE Matches
+SET match_format = 'Test' WHERE match_id IN (2, 5);
+UPDATE Matches
+SET match_format = 'ODI' WHERE match_id IN (1, 4);
+UPDATE Matches
+SET match_format = 'T20I' WHERE match_id IN (3);
+
+
+ALTER TABLE Teams ADD COLUMN country VARCHAR(50);
+
+UPDATE Teams SET country = 'India' WHERE team_name = 'India';
+UPDATE Teams SET country = 'Australia' WHERE team_name = 'Australia';
+UPDATE Teams SET country = 'England' WHERE team_name = 'England';
+UPDATE Teams SET country = 'Pakistan' WHERE team_name = 'Pakistan';
+UPDATE Teams SET country = 'South Africa' WHERE team_name = 'South Africa';
+
+
+SELECT 
+    p.player_name,
+    SUM(CASE WHEN m.match_format = 'Test' THEN ms.runs ELSE 0 END) AS Test_runs,
+    SUM(CASE WHEN m.match_format = 'ODI' THEN ms.runs ELSE 0 END) AS ODI_runs,
+    SUM(CASE WHEN m.match_format = 'T20I' THEN ms.runs ELSE 0 END) AS T20I_runs,
+    ROUND(SUM(ms.runs) / COUNT(ms.match_id), 2) AS overall_batting_average
+FROM Players p
+JOIN MatchStats ms ON p.player_id = ms.player_id
+JOIN Matches m ON ms.match_id = m.match_id
+GROUP BY p.player_id, p.player_name
+HAVING COUNT(DISTINCT m.match_format) >= 2
+ORDER BY overall_batting_average DESC;
+
+
+UPDATE Matches SET winner_id = 1 WHERE match_id = 1;  -- India won match 1
+UPDATE Matches SET winner_id = 3 WHERE match_id = 2;  -- England won match 2
+UPDATE Matches SET winner_id = 5 WHERE match_id = 3;  -- South Africa won match 3
+UPDATE Matches SET winner_id = 2 WHERE match_id = 4;  -- Australia won match 4
+UPDATE Matches SET winner_id = 4 WHERE match_id = 5;  -- Pakistan won match 5
+
+SELECT 
+    t.team_name,
+    SUM(CASE 
+            WHEN t.country = v.country THEN 1 
+            ELSE 0 
+        END) AS home_wins,
+    SUM(CASE 
+            WHEN t.country != v.country THEN 1 
+            ELSE 0 
+        END) AS away_wins
+FROM Matches m
+JOIN Teams t ON m.winner_id = t.team_id
+JOIN Venues v ON m.venue_id = v.venue_id
+GROUP BY t.team_id, t.team_name
+ORDER BY home_wins DESC, away_wins DESC;
+
+
+SELECT 
+    t.team_name,
+    SUM(CASE WHEN t.country = v.country THEN 1 ELSE 0 END) AS home_wins,
+    SUM(CASE WHEN t.country != v.country THEN 1 ELSE 0 END) AS away_wins
+FROM Matches m
+JOIN Teams t ON m.winner_id = t.team_id
+JOIN Venues v ON m.venue_id = v.venue_id
+GROUP BY t.team_id, t.team_name
+ORDER BY home_wins DESC, away_wins DESC;
+
+UPDATE Matches SET venue_id = 2 WHERE match_id = 1; -- India vs Australia, venue MCG (Australia) → India is away
+UPDATE Matches SET venue_id = 1 WHERE match_id = 2; -- England vs Pakistan, venue Wankhede → England away
+
+SELECT 
+    t.team_name,
+    SUM(CASE WHEN t.country = v.country THEN 1 ELSE 0 END) AS home_wins,
+    SUM(CASE WHEN t.country != v.country THEN 1 ELSE 0 END) AS away_wins
+FROM Matches m
+JOIN Teams t ON m.winner_id = t.team_id
+JOIN Venues v ON m.venue_id = v.venue_id
+GROUP BY t.team_id, t.team_name
+ORDER BY home_wins DESC, away_wins DESC;
+SELECT 
+    t.team_name,
+    SUM(CASE 
+            WHEN m.winner_id = t.team_id AND t.country = v.country THEN 1 
+            ELSE 0 
+        END) AS home_wins,
+    SUM(CASE 
+            WHEN m.winner_id = t.team_id AND t.country != v.country THEN 1 
+            ELSE 0 
+        END) AS away_wins,
+    SUM(CASE 
+            WHEN m.winner_id != t.team_id AND (m.team1_id = t.team_id OR m.team2_id = t.team_id) AND t.country = v.country THEN 1
+            ELSE 0
+        END) AS home_losses,
+    SUM(CASE 
+            WHEN m.winner_id != t.team_id AND (m.team1_id = t.team_id OR m.team2_id = t.team_id) AND t.country != v.country THEN 1
+            ELSE 0
+        END) AS away_losses
+FROM Teams t
+JOIN Matches m ON t.team_id IN (m.team1_id, m.team2_id)
+JOIN Venues v ON m.venue_id = v.venue_id
+GROUP BY t.team_id, t.team_name
+ORDER BY home_wins DESC, away_wins DESC;
+
+ALTER TABLE MatchStats ADD COLUMN batting_position INT;
+
+-- Match 1
+UPDATE MatchStats
+SET batting_position = 1 WHERE match_id = 1 AND player_id = 1; -- Virat Kohli
+UPDATE MatchStats
+SET batting_position = 2 WHERE match_id = 1 AND player_id = 2; -- Rohit Sharma
+UPDATE MatchStats
+SET batting_position = 3 WHERE match_id = 1 AND player_id = 4; -- Steve Smith
+UPDATE MatchStats
+SET batting_position = 4 WHERE match_id = 1 AND player_id = 5; -- Pat Cummins
+UPDATE MatchStats
+SET batting_position = 5 WHERE match_id = 1 AND player_id = 3; -- Jasprit Bumrah
+
+-- Match 2
+UPDATE MatchStats
+SET batting_position = 1 WHERE match_id = 2 AND player_id = 6; -- Joe Root
+UPDATE MatchStats
+SET batting_position = 2 WHERE match_id = 2 AND player_id = 7; -- Ben Stokes
+UPDATE MatchStats
+SET batting_position = 3 WHERE match_id = 2 AND player_id = 8; -- Babar Azam
+UPDATE MatchStats
+SET batting_position = 4 WHERE match_id = 2 AND player_id = 9; -- Shaheen Afridi
+
+-- Match 3
+UPDATE MatchStats
+SET batting_position = 1 WHERE match_id = 3 AND player_id = 1; -- Virat Kohli
+UPDATE MatchStats
+SET batting_position = 2 WHERE match_id = 3 AND player_id = 3; -- Jasprit Bumrah
+UPDATE MatchStats
+SET batting_position = 3 WHERE match_id = 3 AND player_id = 10; -- Quinton de Kock
+UPDATE MatchStats
+SET batting_position = 4 WHERE match_id = 3 AND player_id = 11; -- Kagiso Rabada
+
+-- Match 4
+UPDATE MatchStats
+SET batting_position = 1 WHERE match_id = 4 AND player_id = 4; -- Steve Smith
+UPDATE MatchStats
+SET batting_position = 2 WHERE match_id = 4 AND player_id = 5; -- Pat Cummins
+UPDATE MatchStats
+SET batting_position = 3 WHERE match_id = 4 AND player_id = 6; -- Joe Root
+UPDATE MatchStats
+SET batting_position = 4 WHERE match_id = 4 AND player_id = 7; -- Ben Stokes
+
+-- Match 5
+UPDATE MatchStats
+SET batting_position = 1 WHERE match_id = 5 AND player_id = 8; -- Babar Azam
+UPDATE MatchStats
+SET batting_position = 2 WHERE match_id = 5 AND player_id = 9; -- Shaheen Afridi
+UPDATE MatchStats
+SET batting_position = 3 WHERE match_id = 5 AND player_id = 10; -- Quinton de Kock
+UPDATE MatchStats
+SET batting_position = 4 WHERE match_id = 5 AND player_id = 11; -- Kagiso Rabada
+
+
+SELECT 
+    p1.player_name AS batsman1,
+    p2.player_name AS batsman2,
+    (ms1.runs + ms2.runs) AS partnership_runs,
+    ms1.match_id AS match_id
+FROM MatchStats ms1
+JOIN MatchStats ms2 
+    ON ms1.match_id = ms2.match_id
+    AND ms1.batting_position = ms2.batting_position - 1
+JOIN Players p1 ON ms1.player_id = p1.player_id
+JOIN Players p2 ON ms2.player_id = p2.player_id
+WHERE (ms1.runs + ms2.runs) >= 100
+ORDER BY partnership_runs DESC;
+
+-- Update overs for all players (batsmen 0 overs, bowlers >= 4 overs)
+ALTER TABLE MatchStats
+ADD COLUMN overs DECIMAL(4,1) NOT NULL DEFAULT 0.0 AFTER wickets;
+
+
+UPDATE MatchStats 
+SET overs = CASE 
+    WHEN player_id IN (3,5,7,9,11) THEN 10.0   -- bowlers
+    ELSE 0.0                                   -- batsmen
+END;
+
+-- Add extra MatchStats entries to ensure bowlers have >=3 matches per venue
+-- Assume adding matches 6,7,8 for testing
+
+-- Add more matches
+INSERT INTO Matches (team1_id, team2_id, venue_id, match_date) VALUES
+(1, 3, 1, '2024-06-01'),
+(2, 4, 2, '2024-06-05'),
+(5, 1, 5, '2024-06-10');
+
+-- Add corresponding MatchStats for bowlers (player_id 3,5,7,9,11)
+INSERT INTO MatchStats (match_id, player_id, runs, wickets, overs) VALUES
+-- Match 6
+(6, 3, 20, 2, 10.0),
+(6, 5, 15, 1, 10.0),
+(6, 7, 30, 3, 10.0),
+(6, 9, 25, 2, 10.0),
+(6, 11, 10, 1, 10.0),
+-- Match 7
+(7, 3, 22, 1, 10.0),
+(7, 5, 18, 2, 10.0),
+(7, 7, 28, 2, 10.0),
+(7, 9, 20, 1, 10.0),
+(7, 11, 15, 2, 10.0),
+-- Match 8
+(8, 3, 25, 3, 10.0),
+(8, 5, 20, 2, 10.0),
+(8, 7, 35, 4, 10.0),
+(8, 9, 18, 1, 10.0),
+(8, 11, 12, 2, 10.0);
+
+SELECT 
+    p.player_name,
+    v.venue_name,
+    COUNT(ms.match_id) AS matches_played,
+    SUM(ms.wickets) AS total_wickets,
+    ROUND(SUM(ms.runs)/SUM(ms.overs), 2) AS avg_economy_rate
+FROM MatchStats ms
+JOIN Players p ON ms.player_id = p.player_id
+JOIN Matches m ON ms.match_id = m.match_id
+JOIN Venues v ON m.venue_id = v.venue_id
+WHERE p.role = 'Bowler'
+  AND ms.overs >= 4
+GROUP BY p.player_id, v.venue_id
+HAVING COUNT(ms.match_id) >= 3
+ORDER BY avg_economy_rate ASC;
+
+ALTER TABLE MatchStats
+ADD COLUMN is_close_match BOOLEAN DEFAULT 0;
+
+UPDATE MatchStats ms
+JOIN Matches m ON ms.match_id = m.match_id
+SET ms.is_close_match = 1
+WHERE (m.victory_type = 'Runs' AND m.victory_margin < 50)
+   OR (m.victory_type = 'Wickets' AND m.victory_margin < 5);
+
+SELECT 
+    p.player_name,
+    ROUND(AVG(ms.runs), 2) AS avg_runs_in_close_matches,
+    COUNT(ms.match_id) AS total_close_matches_played,
+    SUM(CASE WHEN m.winner_id = p.team_id THEN 1 ELSE 0 END) AS close_matches_won
+FROM MatchStats ms
+JOIN Players p ON ms.player_id = p.player_id
+JOIN Matches m ON ms.match_id = m.match_id
+WHERE ms.is_close_match = 1
+GROUP BY p.player_id, p.player_name
+HAVING total_close_matches_played > 0
+ORDER BY avg_runs_in_close_matches DESC;
+
+ALTER TABLE MatchStats
+ADD COLUMN balls_faced INT DEFAULT 0;
+
+SELECT 
+    p.player_name,
+    YEAR(m.match_date) AS match_year,
+    COUNT(ms.match_id) AS matches_played,
+    ROUND(AVG(ms.runs), 2) AS avg_runs_per_match,
+    ROUND(SUM(ms.runs) / SUM(NULLIF(ms.balls_faced,0)) * 100, 2) AS avg_strike_rate
+FROM MatchStats ms
+JOIN Players p ON ms.player_id = p.player_id
+JOIN Matches m ON ms.match_id = m.match_id
+WHERE m.match_date >= '2020-01-01'
+GROUP BY p.player_id, match_year
+HAVING matches_played >= 5
+ORDER BY p.player_name, match_year;
+
+ALTER TABLE Matches
+ADD COLUMN toss_winner_id INT,
+ADD COLUMN toss_decision VARCHAR(10);  -- 'Bat' or 'Bowl'
+UPDATE Matches
+SET toss_winner_id = team1_id, toss_decision = 'Bat'
+WHERE match_id IN (1,3);
+
+UPDATE Matches
+SET toss_winner_id = team2_id, toss_decision = 'Bowl'
+WHERE match_id IN (2,4,5);
+
+SELECT 
+    toss_decision,
+    COUNT(*) AS total_matches,
+    SUM(CASE WHEN toss_winner_id = winner_id THEN 1 ELSE 0 END) AS matches_won_by_toss_winner,
+    ROUND(SUM(CASE WHEN toss_winner_id = winner_id THEN 1 ELSE 0 END) / COUNT(*) * 100, 2) AS win_percentage
+FROM Matches
+WHERE toss_winner_id IS NOT NULL AND winner_id IS NOT NULL
+GROUP BY toss_decision;
+
+ALTER TABLE MatchStats
+ADD COLUMN overs_bowled DECIMAL(4,1),  -- e.g., 4.5 overs
+ADD COLUMN match_format VARCHAR(10);   -- 'ODI', 'T20', 'Test'
+
+UPDATE MatchStats ms
+JOIN Matches m ON ms.match_id = m.match_id
+SET ms.overs_bowled = 4.0, ms.match_format = 'ODI'
+WHERE ms.player_id IN (3,5,7,9,11);  -- bowlers
+
+UPDATE MatchStats ms
+JOIN Matches m ON ms.match_id = m.match_id
+SET ms.overs_bowled = 3.5, ms.match_format = 'T20'
+WHERE ms.player_id IN (3,5,7,9,11);  -- bowlers
+
+INSERT INTO MatchStats (match_id, player_id, runs, wickets, batting_position, balls_faced, overs_bowled, match_format, is_close_match)
+VALUES
+-- Match 1: ODI
+(1, 1, 85, 0, 3, 100, 0.0, 'ODI', 0),
+(1, 2, 45, 0, 4, 60, 0.0, 'ODI', 0),
+(1, 3, 10, 2, 8, 15, 10.0, 'ODI', 0),
+(1, 4, 72, 0, 2, 80, 0.0, 'ODI', 0),
+(1, 5, 12, 3, 6, 20, 8.0, 'ODI', 0),
+
+-- Match 2: T20
+(2, 4, 50, 0, 2, 35, 0.0, 'T20', 0),
+(2, 5, 20, 1, 5, 18, 4.0, 'T20', 0),
+(2, 6, 0, 2, 7, 0, 4.0, 'T20', 0),
+(2, 7, 25, 1, 3, 20, 2.0, 'T20', 0),
+
+-- Match 3: ODI
+(3, 1, 120, 0, 3, 120, 0.0, 'ODI', 0),
+(3, 3, 15, 4, 8, 20, 10.0, 'ODI', 0),
+(3, 6, 55, 0, 4, 50, 0.0, 'ODI', 0),
+
+-- Match 4: T20
+(4, 4, 70, 0, 2, 40, 0.0, 'T20', 0),
+(4, 5, 30, 2, 5, 25, 4.0, 'T20', 0),
+(4, 7, 10, 1, 6, 10, 4.0, 'T20', 0),
+(4, 8, 40, 0, 3, 30, 0.0, 'T20', 0),
+
+-- Match 5: ODI
+(5, 8, 105, 0, 3, 90, 0.0, 'ODI', 0),
+(5, 9, 18, 3, 7, 15, 10.0, 'ODI', 0),
+(5, 10, 88, 0, 4, 80, 0.0, 'ODI', 0),
+(5, 11, 10, 4, 6, 10, 8.0, 'ODI', 0);
+
+SELECT 
+    p.player_name,
+    SUM(ms.runs) / SUM(ms.overs_bowled) AS economy_rate,
+    SUM(ms.wickets) AS total_wickets,
+    COUNT(DISTINCT ms.match_id) AS matches_played,
+    SUM(ms.overs_bowled) / COUNT(DISTINCT ms.match_id) AS avg_overs_per_match
+FROM MatchStats ms
+JOIN Players p ON ms.player_id = p.player_id
+JOIN Matches m ON ms.match_id = m.match_id
+WHERE ms.match_format IN ('ODI', 'T20')
+GROUP BY p.player_id, p.player_name
+HAVING COUNT(DISTINCT ms.match_id) >= 10
+   AND (SUM(ms.overs_bowled) / COUNT(DISTINCT ms.match_id)) >= 2
+ORDER BY economy_rate ASC
+LIMIT 20;
+
+SELECT 
+    p.player_name,
+    ROUND(AVG(ms.runs), 2) AS avg_runs,
+    ROUND(STD(ms.runs), 2) AS stddev_runs,
+    COUNT(*) AS innings_played
+FROM MatchStats ms
+JOIN Players p ON ms.player_id = p.player_id
+JOIN Matches m ON ms.match_id = m.match_id
+WHERE ms.balls_faced >= 10
+  AND m.match_date >= '2022-01-01'
+GROUP BY p.player_id, p.player_name
+HAVING innings_played >= 1
+ORDER BY stddev_runs ASC, avg_runs DESC;
+
+SELECT
+    p.player_name,
+    SUM(CASE WHEN ms.match_format = 'Test' THEN 1 ELSE 0 END) AS test_matches,
+    ROUND(AVG(CASE WHEN ms.match_format = 'Test' THEN ms.runs END), 2) AS test_avg,
+    SUM(CASE WHEN ms.match_format = 'ODI' THEN 1 ELSE 0 END) AS odi_matches,
+    ROUND(AVG(CASE WHEN ms.match_format = 'ODI' THEN ms.runs END), 2) AS odi_avg,
+    SUM(CASE WHEN ms.match_format = 'T20' THEN 1 ELSE 0 END) AS t20_matches,
+    ROUND(AVG(CASE WHEN ms.match_format = 'T20' THEN ms.runs END), 2) AS t20_avg,
+    COUNT(*) AS total_matches
+FROM MatchStats ms
+JOIN Players p ON ms.player_id = p.player_id
+GROUP BY p.player_id, p.player_name
+HAVING total_matches >= 20
+ORDER BY total_matches DESC, p.player_name;
+
+-- Add fielding columns if not present
+ALTER TABLE MatchStats
+ADD COLUMN catches INT DEFAULT 0,
+ADD COLUMN stumpings INT DEFAULT 0;
+
+-- Player ranking query
+SELECT
+    p.player_name,
+    ms.match_format,
+    
+    -- Batting stats
+    SUM(ms.runs) AS total_runs,
+    ROUND(AVG(NULLIF(ms.runs,0)),2) AS batting_avg,
+    ROUND(SUM(ms.runs) / NULLIF(SUM(ms.balls_faced),0) * 100, 2) AS strike_rate,
+    
+    -- Bowling stats
+    SUM(ms.wickets) AS total_wickets,
+    ROUND(SUM(ms.runs) / NULLIF(SUM(ms.wickets),0), 2) AS bowling_avg,
+    ROUND(SUM(ms.runs) / NULLIF(SUM(ms.overs_bowled),0), 2) AS economy_rate,
+    
+    -- Fielding stats
+    SUM(ms.catches + ms.stumpings) AS total_fielding,
+    
+    -- Points calculation
+    ROUND(
+        -- Batting points
+        ((SUM(ms.runs) * 0.01) + (AVG(NULLIF(ms.runs,0)) * 0.5) + ((SUM(ms.runs) / NULLIF(SUM(ms.balls_faced),0) * 100) * 0.3))
+        +
+        -- Bowling points
+        ((SUM(ms.wickets) * 2) + ((50 - (SUM(ms.runs) / NULLIF(SUM(ms.wickets),1))) * 0.5) + ((6 - (SUM(ms.runs) / NULLIF(SUM(ms.overs_bowled),1))) * 2))
+        +
+        -- Fielding points (optional weight: 1 per catch/stumping)
+        SUM(ms.catches + ms.stumpings)
+    ,2) AS total_points
+
+FROM MatchStats ms
+JOIN Players p ON ms.player_id = p.player_id
+GROUP BY p.player_id, ms.match_format
+ORDER BY ms.match_format, total_points DESC;
+-- Add fielding columns to MatchStats
+
+
+
+UPDATE Matches
+SET winner_id = 1, victory_margin = 25, victory_type = 'Runs', batting_first_team_id = 1, match_format = 'ODI'
+WHERE match_id = 1;
+
+UPDATE Matches
+SET winner_id = 3, victory_margin = 3, victory_type = 'Wickets', batting_first_team_id = 4, match_format = 'Test'
+WHERE match_id = 2;
+
+UPDATE Matches
+SET winner_id = 1, victory_margin = 50, victory_type = 'Runs', batting_first_team_id = 5, match_format = 'ODI'
+WHERE match_id = 3;
+
+UPDATE Matches
+SET winner_id = 2, victory_margin = 4, victory_type = 'Wickets', batting_first_team_id = 2, match_format = 'T20'
+WHERE match_id = 4;
+
+UPDATE Matches
+SET winner_id = 4, victory_margin = 10, victory_type = 'Runs', batting_first_team_id = 4, match_format = 'ODI'
+WHERE match_id = 5;
+
+-- Step 1: Get all matches between each pair of teams in the last 3 years
+WITH recent_matches AS (
+    SELECT *
+    FROM Matches
+    WHERE match_date >= DATE_SUB(CURDATE(), INTERVAL 3 YEAR)
+),
+
+-- Step 2: Count total matches for each team pair
+team_pair_stats AS (
+    SELECT 
+        LEAST(team1_id, team2_id) AS team_a,
+        GREATEST(team1_id, team2_id) AS team_b,
+        COUNT(*) AS total_matches
+    FROM recent_matches
+    GROUP BY LEAST(team1_id, team2_id), GREATEST(team1_id, team2_id)
+    HAVING COUNT(*) >= 5
+),
+
+-- Step 3: Count wins for each team in the pair
+wins_stats AS (
+    SELECT
+        LEAST(m.team1_id, m.team2_id) AS team_a,
+        GREATEST(m.team1_id, m.team2_id) AS team_b,
+        SUM(CASE WHEN m.winner_id = LEAST(m.team1_id, m.team2_id) THEN 1 ELSE 0 END) AS team_a_wins,
+        SUM(CASE WHEN m.winner_id = GREATEST(m.team1_id, m.team2_id) THEN 1 ELSE 0 END) AS team_b_wins,
+        AVG(CASE WHEN m.winner_id = LEAST(m.team1_id, m.team2_id) THEN m.victory_margin END) AS team_a_avg_margin,
+        AVG(CASE WHEN m.winner_id = GREATEST(m.team1_id, m.team2_id) THEN m.victory_margin END) AS team_b_avg_margin
+    FROM recent_matches m
+    GROUP BY LEAST(m.team1_id, m.team2_id), GREATEST(m.team1_id, m.team2_id)
+)
+
+-- Step 4: Combine total matches and wins info, join with team names
+SELECT 
+    t1.team_name AS team_a_name,
+    t2.team_name AS team_b_name,
+    tp.total_matches,
+    ws.team_a_wins,
+    ws.team_b_wins,
+    ROUND(ws.team_a_avg_margin, 2) AS team_a_avg_victory_margin,
+    ROUND(ws.team_b_avg_margin, 2) AS team_b_avg_victory_margin,
+    ROUND((ws.team_a_wins / tp.total_matches) * 100, 2) AS team_a_win_percentage,
+    ROUND((ws.team_b_wins / tp.total_matches) * 100, 2) AS team_b_win_percentage
+FROM team_pair_stats tp
+JOIN wins_stats ws 
+    ON tp.team_a = ws.team_a AND tp.team_b = ws.team_b
+JOIN Teams t1 ON tp.team_a = t1.team_id
+JOIN Teams t2 ON tp.team_b = t2.team_id
+ORDER BY tp.total_matches DESC, team_a_win_percentage DESC;
+
+SELECT
+    p.player_name,
+    DATE_FORMAT(m.match_date, '%Y-Q%q') AS year_quarter, -- Quarterly
+    COUNT(ms.match_id) AS matches_played,
+    SUM(ms.runs) AS total_runs,
+    ROUND(AVG(ms.runs), 2) AS avg_runs_per_match,
+    ROUND(SUM(ms.runs)/NULLIF(SUM(ms.balls_faced),0)*100, 2) AS strike_rate
+FROM MatchStats ms
+JOIN Players p ON ms.player_id = p.player_id
+JOIN Matches m ON ms.match_id = m.match_id
+WHERE m.match_date >= '2020-01-01' -- last few years
+GROUP BY p.player_id, year_quarter
+ORDER BY p.player_id, year_quarter;
+
+WITH quarterly_perf AS (
+    SELECT
+        p.player_id,
+        p.player_name,
+        DATE_FORMAT(m.match_date, '%Y-Q%q') AS year_quarter,
+        ROUND(AVG(ms.runs), 2) AS avg_runs,
+        ROUND(SUM(ms.runs)/NULLIF(SUM(ms.balls_faced),0)*100, 2) AS strike_rate
+    FROM MatchStats ms
+    JOIN Players p ON ms.player_id = p.player_id
+    JOIN Matches m ON ms.match_id = m.match_id
+    WHERE m.match_date >= '2020-01-01'
+    GROUP BY p.player_id, year_quarter
+)
+SELECT
+    player_name,
+    year_quarter,
+    avg_runs,
+    strike_rate,
+    LAG(avg_runs) OVER (PARTITION BY player_id ORDER BY year_quarter) AS prev_avg_runs,
+    CASE
+        WHEN avg_runs > LAG(avg_runs) OVER (PARTITION BY player_id ORDER BY year_quarter) THEN 'Improving'
+        WHEN avg_runs < LAG(avg_runs) OVER (PARTITION BY player_id ORDER BY year_quarter) THEN 'Declining'
+        ELSE 'Stable'
+    END AS performance_trend
+FROM quarterly_perf
+ORDER BY player_id, year_quarter;
+
+
+
+WITH career_perf AS (
+    SELECT
+        p.player_id,
+        p.player_name,
+        ROUND(AVG(ms.runs), 2) AS overall_avg_runs
+    FROM MatchStats ms
+    JOIN Players p ON ms.player_id = p.player_id
+    JOIN Matches m ON ms.match_id = m.match_id
+    WHERE m.match_date >= '2020-01-01'
+    GROUP BY p.player_id
+)
+SELECT
+    player_name,
+    overall_avg_runs,
+    CASE
+        WHEN overall_avg_runs >= 50 THEN 'Career Ascending'
+        WHEN overall_avg_runs BETWEEN 30 AND 50 THEN 'Career Stable'
+        ELSE 'Career Declining'
+    END AS career_phase
+FROM career_perf
+ORDER BY overall_avg_runs DESC;
+
+
+WITH partnerships AS (
+    SELECT
+        ms1.match_id,
+        ms1.player_id AS player1_id,
+        p1.player_name AS player1_name,
+        ms2.player_id AS player2_id,
+        p2.player_name AS player2_name,
+        (ms1.runs + ms2.runs) AS partnership_runs
+    FROM MatchStats ms1
+    JOIN MatchStats ms2
+        ON ms1.match_id = ms2.match_id
+        AND ms2.batting_position = ms1.batting_position + 1
+    JOIN Players p1 ON ms1.player_id = p1.player_id
+    JOIN Players p2 ON ms2.player_id = p2.player_id
+)
+SELECT
+    player1_name,
+    player2_name,
+    COUNT(*) AS total_partnerships,
+    ROUND(AVG(partnership_runs), 2) AS avg_partnership_runs,
+    SUM(CASE WHEN partnership_runs > 50 THEN 1 ELSE 0 END) AS partnerships_over_50,
+    MAX(partnership_runs) AS highest_partnership,
+    ROUND(SUM(CASE WHEN partnership_runs > 50 THEN 1 ELSE 0 END)/COUNT(*)*100, 2) AS success_rate_percentage
+FROM partnerships
+GROUP BY player1_id, player2_id
+HAVING total_partnerships >= 5
+ORDER BY avg_partnership_runs DESC;
+
+
+
+INSERT INTO Matches (team1_id, team2_id, venue_id, match_date, winner_id, batting_first_team_id, victory_margin, victory_type, match_format)
+VALUES
+(1, 2, 1, '2023-01-15', 1, 1, 25, 'Runs', 'ODI'),
+(2, 1, 2, '2023-03-10', 2, 1, 4, 'Wickets', 'ODI'),
+(1, 2, 3, '2023-06-20', 1, 2, 30, 'Runs', 'ODI'),
+(2, 1, 4, '2023-08-05', 1, 2, 10, 'Runs', 'ODI'),
+(1, 2, 1, '2023-10-18', 2, 1, 3, 'Wickets', 'ODI'),
+(3, 4, 2, '2022-12-05', 3, 3, 15, 'Runs', 'Test'),
+(3, 4, 3, '2023-02-15', 4, 4, 2, 'Wickets', 'Test');
+
+
+WITH recent_matches AS (
+    SELECT *
+    FROM Matches
+    WHERE match_date >= DATE_SUB(CURDATE(), INTERVAL 3 YEAR)
+),
+team_pairs AS (
+    SELECT
+        LEAST(team1_id, team2_id) AS team_a,
+        GREATEST(team1_id, team2_id) AS team_b,
+        COUNT(*) AS total_matches
+    FROM recent_matches
+    GROUP BY LEAST(team1_id, team2_id), GREATEST(team1_id, team2_id)
+    HAVING COUNT(*) >= 5
+),
+team_wins AS (
+    SELECT
+        tp.team_a,
+        tp.team_b,
+        tp.total_matches,                     -- include total_matches
+        SUM(CASE WHEN rm.winner_id = tp.team_a THEN 1 ELSE 0 END) AS wins_team_a,
+        SUM(CASE WHEN rm.winner_id = tp.team_b THEN 1 ELSE 0 END) AS wins_team_b,
+        AVG(CASE WHEN rm.winner_id = tp.team_a THEN rm.victory_margin END) AS avg_margin_team_a,
+        AVG(CASE WHEN rm.winner_id = tp.team_b THEN rm.victory_margin END) AS avg_margin_team_b
+    FROM team_pairs tp
+    JOIN recent_matches rm
+      ON (rm.team1_id = tp.team_a AND rm.team2_id = tp.team_b)
+      OR (rm.team1_id = tp.team_b AND rm.team2_id = tp.team_a)
+    GROUP BY tp.team_a, tp.team_b, tp.total_matches
+),
+team_batting_performance AS (
+    SELECT
+        tp.team_a,
+        tp.team_b,
+        SUM(CASE WHEN rm.batting_first_team_id = tp.team_a AND rm.winner_id = tp.team_a THEN 1 ELSE 0 END) AS wins_batting_first_team_a,
+        SUM(CASE WHEN rm.batting_first_team_id = tp.team_a AND rm.winner_id = tp.team_b THEN 1 ELSE 0 END) AS wins_bowling_first_team_a,
+        SUM(CASE WHEN rm.batting_first_team_id = tp.team_b AND rm.winner_id = tp.team_b THEN 1 ELSE 0 END) AS wins_batting_first_team_b,
+        SUM(CASE WHEN rm.batting_first_team_id = tp.team_b AND rm.winner_id = tp.team_a THEN 1 ELSE 0 END) AS wins_bowling_first_team_b
+    FROM team_pairs tp
+    JOIN recent_matches rm
+      ON (rm.team1_id = tp.team_a AND rm.team2_id = tp.team_b)
+      OR (rm.team1_id = tp.team_b AND rm.team2_id = tp.team_a)
+    GROUP BY tp.team_a, tp.team_b
+)
+SELECT
+    t1.team_name AS team_a_name,
+    t2.team_name AS team_b_name,
+    tw.total_matches,
+    tw.wins_team_a,
+    tw.wins_team_b,
+    tw.avg_margin_team_a,
+    tw.avg_margin_team_b,
+    tbp.wins_batting_first_team_a,
+    tbp.wins_bowling_first_team_a,
+    tbp.wins_batting_first_team_b,
+    tbp.wins_bowling_first_team_b,
+    ROUND((tw.wins_team_a / tw.total_matches) * 100, 2) AS win_pct_team_a,
+    ROUND((tw.wins_team_b / tw.total_matches) * 100, 2) AS win_pct_team_b
+FROM team_wins tw
+JOIN team_batting_performance tbp
+  ON tw.team_a = tbp.team_a AND tw.team_b = tbp.team_b
+JOIN Teams t1 ON tw.team_a = t1.team_id
+JOIN Teams t2 ON tw.team_b = t2.team_id
+ORDER BY tw.total_matches DESC;
+
+
+
+-- Add sample matches with formats
+INSERT INTO Matches (team1_id, team2_id, venue_id, match_date)
+VALUES
+(1, 2, 1, '2024-01-10'),
+(3, 4, 2, '2024-02-15'),
+(1, 3, 3, '2024-03-20'),
+(2, 5, 4, '2024-04-10'),
+(4, 1, 5, '2024-05-05');
+
+-- Add match formats to matches
+UPDATE Matches SET match_format = 'ODI' WHERE match_id IN (1,4,5);
+UPDATE Matches SET match_format = 'Test' WHERE match_id = 3;
+UPDATE Matches SET match_format = 'T20' WHERE match_id = 2;
+
+-- Add player stats for these matches
+INSERT INTO MatchStats (match_id, player_id, runs, wickets, overs, balls_faced, overs_bowled, match_format)
+VALUES
+(1,1,50,0,0,45,0,'ODI'),
+(1,2,30,0,0,25,0,'ODI'),
+(1,3,10,2,0,5,4,'ODI'),
+
+(2,4,70,0,0,60,0,'T20'),
+(2,5,20,1,0,15,2,'T20'),
+
+(3,1,100,0,0,120,0,'Test'),
+(3,3,35,1,0,40,1,'Test'),
+
+(4,2,40,1,0,35,0,'ODI'),
+(4,5,25,2,0,20,2,'ODI'),
+
+(5,4,80,0,0,70,0,'ODI'),
+(5,1,60,0,0,55,0,'ODI');
+
+-- Add matches with formats
+INSERT INTO Matches (team1_id, team2_id, venue_id, match_date, match_format)
+VALUES
+(1, 2, 1, '2024-01-10', 'ODI'),
+(1, 3, 2, '2024-02-15', 'ODI'),
+(2, 3, 3, '2024-03-10', 'T20'),
+(3, 4, 4, '2024-04-05', 'T20'),
+(1, 4, 5, '2024-05-01', 'Test');
+
+-- Add player stats
+INSERT INTO MatchStats (match_id, player_id, runs, balls_faced, wickets, overs_bowled, match_format)
+VALUES
+(1, 1, 50, 45, 0, 0, 'ODI'),
+(1, 2, 30, 25, 0, 0, 'ODI'),
+(2, 1, 70, 60, 0, 0, 'ODI'),
+(2, 3, 40, 35, 0, 0, 'ODI'),
+(3, 2, 45, 40, 0, 0, 'T20'),
+(3, 3, 60, 50, 0, 0, 'T20'),
+(4, 3, 55, 45, 0, 0, 'T20'),
+(4, 4, 30, 25, 0, 0, 'T20'),
+(5, 1, 120, 110, 0, 0, 'Test'),
+(5, 4, 80, 75, 0, 0, 'Test');
+
+
+-- Step 1: Aggregate match counts and runs per format per player
+WITH player_format_stats AS (
+    SELECT
+        p.player_id,
+        p.player_name,
+        ms.match_format,
+        COUNT(DISTINCT ms.match_id) AS matches_played,
+        SUM(ms.runs) AS total_runs,
+        SUM(CASE WHEN ms.runs IS NOT NULL THEN 1 ELSE 0 END) AS innings_played
+    FROM Players p
+    JOIN MatchStats ms ON p.player_id = ms.player_id
+    GROUP BY p.player_id, p.player_name, ms.match_format
+),
+
+-- Step 2: Pivot formats into columns
+player_stats_pivot AS (
+    SELECT
+        player_id,
+        player_name,
+        MAX(CASE WHEN match_format = 'Test' THEN matches_played END) AS test_matches,
+        MAX(CASE WHEN match_format = 'ODI' THEN matches_played END) AS odi_matches,
+        MAX(CASE WHEN match_format = 'T20' THEN matches_played END) AS t20_matches,
+        MAX(CASE WHEN match_format = 'Test' THEN ROUND(total_runs / NULLIF(innings_played,0),2) END) AS test_avg,
+        MAX(CASE WHEN match_format = 'ODI' THEN ROUND(total_runs / NULLIF(innings_played,0),2) END) AS odi_avg,
+        MAX(CASE WHEN match_format = 'T20' THEN ROUND(total_runs / NULLIF(innings_played,0),2) END) AS t20_avg
+    FROM player_format_stats
+    GROUP BY player_id, player_name
+)
+
+-- Step 3: Filter players with at least 20 total matches
+SELECT *
+FROM player_stats_pivot
+WHERE COALESCE(test_matches,0) + COALESCE(odi_matches,0) + COALESCE(t20_matches,0) >= 20
+ORDER BY (COALESCE(test_matches,0) + COALESCE(odi_matches,0) + COALESCE(t20_matches,0)) DESC;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- New tables with different names (no dropping)
+CREATE TABLE teams_new (
+    team_id INT AUTO_INCREMENT PRIMARY KEY,
+    team_name VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE players_new (
+    player_id INT AUTO_INCREMENT PRIMARY KEY,
+    player_name VARCHAR(100) NOT NULL,
+    team_id INT,
+    FOREIGN KEY (team_id) REFERENCES teams_new(team_id)
+);
+
+CREATE TABLE venues_new (
+    venue_id INT AUTO_INCREMENT PRIMARY KEY,
+    venue_name VARCHAR(100) NOT NULL,
+    city VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE matches_new (
+    match_id INT AUTO_INCREMENT PRIMARY KEY,
+    team1_id INT,
+    team2_id INT,
+    venue_id INT,
+    match_date DATE,
+    description VARCHAR(255),
+    FOREIGN KEY (team1_id) REFERENCES teams_new(team_id),
+    FOREIGN KEY (team2_id) REFERENCES teams_new(team_id),
+    FOREIGN KEY (venue_id) REFERENCES venues_new(venue_id)
+);
+
+CREATE TABLE player_stats_new (
+    stat_id INT AUTO_INCREMENT PRIMARY KEY,
+    player_id INT,
+    match_id INT,
+    runs INT,
+    wickets INT,
+    FOREIGN KEY (player_id) REFERENCES players_new(player_id),
+    FOREIGN KEY (match_id) REFERENCES matches_new(match_id)
+);
+
+-- Insert sample data
+INSERT INTO teams_new (team_name) VALUES
+('India'), ('Australia'), ('England'), ('South Africa'), ('New Zealand');
+
+INSERT INTO players_new (player_name, team_id) VALUES
+('Virat Kohli', 1),
+('Rohit Sharma', 1),
+('Steve Smith', 2),
+('David Warner', 2),
+('Joe Root', 3),
+('Ben Stokes', 3),
+('AB de Villiers', 4),
+('Kagiso Rabada', 4),
+('Kane Williamson', 5),
+('Trent Boult', 5);
+
+INSERT INTO venues_new (venue_name, city) VALUES
+('Wankhede Stadium', 'Mumbai'),
+('MCG', 'Melbourne'),
+('Lords', 'London'),
+('Newlands', 'Cape Town'),
+('Eden Park', 'Auckland');
+
+INSERT INTO matches_new (team1_id, team2_id, venue_id, match_date, description) VALUES
+(1, 2, 1, '2023-10-01', 'ODI Series Match 1'),
+(3, 4, 2, '2023-10-05', 'Test Match'),
+(5, 1, 3, '2023-10-10', 'T20 Match'),
+(2, 3, 4, '2023-10-15', 'ODI Series Match 2'),
+(4, 5, 5, '2023-10-20', 'World Cup Warmup');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- Extra matches across formats
+INSERT INTO Matches (match_id, team1_id, team2_id, venue_id, match_date, match_format, status, winner_id, victory_margin, victory_type, toss_winner_id, toss_decision)
+VALUES
+(50, 1, 3, 1, '2022-03-15', 'Test', 'Completed', 1, 150, 'Runs', 1, 'Bat'),
+(51, 2, 5, 3, '2021-07-20', 'ODI', 'Completed', 5, 6, 'Wickets', 2, 'Bowl'),
+(52, 4, 1, 5, '2023-09-10', 'T20', 'Completed', 4, 3, 'Wickets', 4, 'Bat'),
+(53, 3, 2, 4, '2020-12-25', 'ODI', 'Completed', 3, 25, 'Runs', 2, 'Bat'),
+(54, 5, 4, 2, '2024-02-14', 'Test', 'Completed', 5, 75, 'Runs', 4, 'Bowl');
+
+-- Match 6 (India vs England, Test)
+INSERT INTO MatchStats (match_id, player_id, runs, wickets, batting_position, balls_faced, overs_bowled, match_format, is_close_match, catches)
+VALUES
+(50, 1, 120, 0, 3, 250, 0.0, 'Test', 0, 1),   -- Kohli
+(50, 2, 80, 0, 2, 200, 0.0, 'Test', 0, 0),   -- Rohit
+(50, 5, 60, 0, 4, 180, 0.0, 'Test', 0, 2),   -- Root
+(50, 6, 45, 2, 6, 150, 15.0, 'Test', 0, 0),  -- Stokes
+(50, 3, 15, 4, 8, 40, 20.0, 'Test', 0, 0);   -- Smith as part-time bowler
+
+-- Match 7 (Australia vs NZ, ODI)
+INSERT INTO MatchStats (match_id, player_id, runs, wickets, batting_position, balls_faced, overs_bowled, match_format, is_close_match)
+VALUES
+(51, 3, 90, 0, 2, 100, 0.0, 'ODI', 0),
+(51, 4, 30, 0, 3, 40, 0.0, 'ODI', 0),
+(51, 9, 70, 1, 4, 80, 10.0, 'ODI', 0),
+(51, 10, 20, 3, 8, 15, 9.0, 'ODI', 0);
+
+-- Match 1: India vs Australia (ODI)
+INSERT INTO MatchStats (match_id, player_id, runs, wickets, batting_position, balls_faced, overs_bowled, match_format, is_close_match, catches)
+VALUES
+(01, 1, 85, 0, 3, 95, 0.0, 'ODI', 1, 1),   -- Virat Kohli
+(01, 2, 45, 0, 2, 60, 0.0, 'ODI', 1, 0),   -- Rohit Sharma
+(01, 3, 70, 0, 2, 80, 0.0, 'ODI', 1, 0),   -- Steve Smith
+(01, 4, 10, 2, 6, 15, 8.0, 'ODI', 1, 0);   -- David Warner (part-time bowler)
+
+-- Match 2: England vs New Zealand (T20)
+INSERT INTO MatchStats (match_id, player_id, runs, wickets, batting_position, balls_faced, overs_bowled, match_format, is_close_match, catches)
+VALUES
+(02, 5, 60, 0, 3, 35, 0.0, 'T20', 0, 1),   -- Joe Root
+(02, 6, 25, 1, 4, 20, 4.0, 'T20', 0, 0),   -- Ben Stokes
+(02, 9, 75, 0, 2, 40, 0.0, 'T20', 0, 0),   -- Kane Williamson
+(02, 10, 5, 3, 8, 10, 4.0, 'T20', 0, 1);   -- Trent Boult
+
+-- Match 3: Pakistan vs India (Test)
+INSERT INTO MatchStats (match_id, player_id, runs, wickets, batting_position, balls_faced, overs_bowled, match_format, is_close_match, catches)
+VALUES
+(03, 7, 150, 0, 3, 280, 0.0, 'Test', 0, 2), -- Babar Azam
+(03, 8, 40, 3, 6, 110, 25.0, 'Test', 0, 0), -- Shaheen Afridi
+(03, 1, 95, 0, 4, 200, 0.0, 'Test', 0, 1),  -- Virat Kohli
+(03, 2, 20, 2, 2, 50, 12.0, 'Test', 0, 0);  -- Rohit Sharma
+
+create database fufu;
+use fufu;
+-- Drop old tables if exist
+
+-- Teams Table
+CREATE TABLE teams (
+    team_id INT PRIMARY KEY AUTO_INCREMENT,
+    team_name VARCHAR(50) NOT NULL
+);
+
+-- Players Table
+CREATE TABLE players (
+    player_id INT PRIMARY KEY AUTO_INCREMENT,
+    player_name VARCHAR(50) NOT NULL,
+    country VARCHAR(50) NOT NULL
+);
+
+-- Venues Table
+CREATE TABLE venues (
+    venue_id INT PRIMARY KEY AUTO_INCREMENT,
+    venue_name VARCHAR(100) NOT NULL,
+    city VARCHAR(50) NOT NULL
+);
+
+-- Matches Table
+CREATE TABLE matches (
+    match_id INT PRIMARY KEY AUTO_INCREMENT,
+    team1_id INT,
+    team2_id INT,
+    venue_id INT,
+    match_date DATE,
+    description VARCHAR(255),
+    FOREIGN KEY (team1_id) REFERENCES teams(team_id),
+    FOREIGN KEY (team2_id) REFERENCES teams(team_id),
+    FOREIGN KEY (venue_id) REFERENCES venues(venue_id)
+);
+
+-- Player Stats Table
+CREATE TABLE player_stats (
+    stat_id INT PRIMARY KEY AUTO_INCREMENT,
+    player_id INT,
+    match_id INT,
+    runs INT,
+    wickets INT,
+    catches INT,
+    FOREIGN KEY (player_id) REFERENCES players(player_id),
+    FOREIGN KEY (match_id) REFERENCES matches(match_id)
+);
+
+-- Insert Teams
+INSERT INTO teams (team_name) VALUES
+('India'), ('Australia'), ('England'), ('South Africa');
+
+-- Insert Players
+INSERT INTO players (player_name, country) VALUES
+('Virat Kohli', 'India'),
+('Rohit Sharma', 'India'),
+('KL Rahul', 'India'),
+('Steve Smith', 'Australia'),
+('David Warner', 'Australia'),
+('Pat Cummins', 'Australia'),
+('Joe Root', 'England'),
+('Ben Stokes', 'England'),
+('Jos Buttler', 'England'),
+('Kagiso Rabada', 'South Africa'),
+('AB de Villiers', 'South Africa'),
+('Faf du Plessis', 'South Africa'),
+('Hardik Pandya', 'India'),
+('Rishabh Pant', 'India'),
+('Mitchell Starc', 'Australia'),
+('Marcus Stoinis', 'Australia'),
+('Jofra Archer', 'England'),
+('Jonny Bairstow', 'England'),
+('Quinton de Kock', 'South Africa'),
+('Hashim Amla', 'South Africa');
+
+-- Insert Venues
+INSERT INTO venues (venue_name, city) VALUES
+('Wankhede Stadium', 'Mumbai'),
+('Eden Gardens', 'Kolkata'),
+('MCG', 'Melbourne'),
+('SCG', 'Sydney'),
+('Lords', 'London'),
+('Newlands', 'Cape Town');
+
+-- Insert Matches
+INSERT INTO matches (team1_id, team2_id, venue_id, match_date, description) VALUES
+(1, 2, 1, '2024-08-01', 'India vs Australia 1st ODI'),
+(3, 4, 2, '2024-08-05', 'England vs South Africa 1st ODI'),
+(1, 3, 3, '2024-08-10', 'India vs England 1st ODI'),
+(2, 4, 4, '2024-08-15', 'Australia vs South Africa 1st ODI'),
+(1, 4, 5, '2024-08-20', 'India vs South Africa 1st ODI');
+
+-- Insert Player Stats
+INSERT INTO player_stats (player_id, match_id, runs, wickets, catches) VALUES
+(1, 1, 85, 0, 1),
+(2, 1, 102, 0, 0),
+(3, 1, 45, 0, 0),
+(4, 1, 77, 0, 1),
+(5, 1, 65, 0, 0),
+(6, 1, 12, 3, 0),
+(7, 2, 90, 0, 1),
+(8, 2, 45, 1, 0),
+(9, 2, 60, 0, 1),
+(10, 2, 20, 4, 0),
+(11, 2, 75, 0, 0),
+(12, 2, 55, 0, 0),
+(13, 3, 70, 1, 0),
+(14, 3, 45, 0, 1),
+(15, 3, 10, 2, 0),
+(16, 3, 50, 0, 0),
+(17, 3, 5, 3, 0),
+(18, 3, 33, 0, 0),
+(19, 4, 80, 0, 1),
+(20, 4, 60, 0, 0);
